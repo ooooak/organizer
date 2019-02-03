@@ -1,119 +1,156 @@
 package org
 
 import (
-	"io/ioutil"
-	"log"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"./paths"
 )
 
-func isDir(absPath string) bool {
+// List of sub dir
+const (
+	FileTypeGraphics   string = "Graphics"
+	FileTypeDataFiles  string = "Datafiles"
+	FileTypeExecutable string = "Executable"
+	FileTypeImages     string = "Images"
+	FileTypeArchive    string = "Archive"
+	FileTypeDocs       string = "Docs"
+	FileTypeBooks      string = "Books"
+	FileTypeAudio      string = "Audio"
+	FileTypeVideos     string = "Videos"
+	FileTypeScripts    string = "Scripts"
+	FileTypeHTML       string = "Html"
+	FileTypeDirectory  string = "Folders"
+	FileTypeTorrent    string = "Torrent"
+	FileTypeText       string = "Text"
+	FileTypeShortCut   string = "ShortCut"
+	FileTypeEmptyDir   string = "Empty"
+	FileTypeUnknown    string = "Unknown"
+)
+
+// GetExt file extension
+func GetExt(absSource string) string {
+	return filepath.Ext(filepath.Base(absSource))
+}
+
+// GuessFileType get file type
+func GuessFileType(ext string) string {
+	switch strings.ToLower(ext) {
+	case ".psd", ".eps", ".ai", ".flinto", ".sketch":
+		return FileTypeGraphics
+
+	case ".sql", ".xml", ".json":
+		return FileTypeDataFiles
+
+	case ".exe", ".msi":
+		return FileTypeExecutable
+
+	case ".png", ".jpg", ".svg", ".gif", ".jpeg":
+		return FileTypeImages
+
+	case ".zip", ".rar", ".7z", ".gz":
+		return FileTypeArchive
+
+	case ".text", ".txt":
+		return FileTypeText
+
+	case ".docx", ".doc", ".xlsx", ".md", ".pub", ".pt":
+		return FileTypeDocs
+
+	case ".epub", ".pdf", ".djvu", ".chm":
+		return FileTypeBooks
+
+	case ".mp3", ".m3u":
+		return FileTypeAudio
+
+	case ".mp4", ".flv", ".3gp", ".mpg", ".wmv", ".mov":
+		return FileTypeVideos
+
+	case ".php", ".c", ".js", ".cpp", ".fs", ".hs", ".ml",
+		".rs", ".go", ".d", ".java", ".h", ".py", ".rb", ".lua",
+		".r", ".rkt", ".clj", ".cljs", ".coffee", ".ts":
+		return FileTypeScripts
+
+	case ".torrent":
+		return FileTypeTorrent
+
+	case ".htm", ".html":
+		return FileTypeHTML
+
+	case ".lnk":
+		return FileTypeShortCut
+
+	default:
+		return FileTypeUnknown
+	}
+}
+
+// IsEmptyDir directory
+func IsEmptyDir(absDir string) bool {
+	f, err := os.Open(absDir)
+	if err != nil {
+		return false
+	}
+
+	defer f.Close()
+
+	_, err = f.Readdirnames(1) // Or f.Readdir(1)
+	if err == io.EOF {
+		return true
+	}
+
+	return false
+}
+
+// IsDir !
+func IsDir(absPath string) bool {
 	fi, err := os.Stat(absPath)
 	return (err == nil && fi.IsDir())
 }
 
-func createDir(absDir string) error {
+// CreateDir !
+func CreateDir(absDir string) error {
 	return os.Mkdir(absDir, os.ModePerm)
 }
 
-func proccessDir(org paths.Organizer, dirs []string) error {
-	// create Folder sub dir
-	if !isDir(org.AbsSubDir(fileTypeDirectory)) {
-		// sub dir dont exit? create subdir it
-		err := createDir(org.AbsSubDir(fileTypeDirectory))
-		if err != nil {
-			return err
-		}
+// MoveDir to its sub dir
+func MoveDir(org *paths.Organizer, dir string) error {
+	source := org.AbsSource(dir)
+	var subDir string
+	if IsEmptyDir(source) {
+		subDir = FileTypeEmptyDir
+	} else {
+		subDir = FileTypeDirectory
 	}
-
-	// handle dir
-	for _, fileName := range dirs {
-		err := os.Rename(org.AbsSource(fileName),
-			org.FinalPath(fileName, fileTypeDirectory))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return os.Rename(source, org.FinalPath(dir, subDir))
 }
 
-func proccessFiles(org paths.Organizer, files []string) error {
-	for _, fileName := range files {
-		absSource := org.AbsSource(fileName)
-		fileType := guessFileType(getExt(absSource))
-		subDir := org.AbsSubDir(fileType)
-		finalPath := org.FinalPath(fileName, fileType)
+// MoveFile in
+func MoveFile(org *paths.Organizer, fileName string) error {
+	absSource := org.AbsSource(fileName)
+	fileType := GuessFileType(GetExt(absSource))
 
-		if !isDir(subDir) {
-			// sub dir dont exit? create subdir it
-			err := createDir(subDir)
+	finalPath := org.FinalPath(fileName, fileType)
+
+	err := os.Rename(absSource, finalPath)
+	if err != nil {
+		return err
+	}
+
+	if fileType == FileTypeHTML {
+		// move data dir
+		htmlDataDir := strings.Split(fileName, ".")[0] + "_files"
+		absHTMLDataPath := org.FinalPath(htmlDataDir, fileType)
+		if IsDir(absHTMLDataPath) {
+			// move data file
+			err = os.Rename(org.AbsSource(htmlDataDir), absHTMLDataPath)
 			if err != nil {
 				return err
 			}
 		}
-
-		err := os.Rename(absSource, finalPath)
-		if err != nil {
-			return err
-		}
-
-		if fileType == fileTypeHTML {
-			// move data dir
-			htmlDataDir := strings.Split(fileName, ".")[0] + "_files"
-			absHTMLDataPath := org.FinalPath(htmlDataDir, fileType)
-			if isDir(absHTMLDataPath) {
-				// move data file
-				err = os.Rename(org.AbsSource(htmlDataDir), absHTMLDataPath)
-				if err != nil {
-					return err
-				}
-			}
-		}
 	}
 
 	return nil
-}
-
-// Run file organizer
-func Run(basePath string) {
-	org := paths.Init(basePath)
-
-	// read input dir
-	dirfiles, err := ioutil.ReadDir(org.Base())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// create new base
-	if !isDir(org.NewBase()) {
-		err = createDir(org.NewBase())
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	var files []string
-	var dirs []string
-	for _, f := range dirfiles {
-		if f.IsDir() {
-			dirs = append(dirs, f.Name())
-		} else {
-			files = append(files, f.Name())
-		}
-	}
-
-	// handle files
-	err = proccessFiles(org, files)
-	if err != nil {
-		log.Println(err)
-	}
-
-	// handle dirs
-	err = proccessDir(org, dirs)
-	if err != nil {
-		log.Println(err)
-	}
 }
