@@ -27,28 +27,18 @@ func readArg() string {
 	return mainDir
 }
 
-func readEntries(absBase string) ([]string, []string) {
+func readEntries(absBase string) []os.FileInfo {
 	// read input dir
 	dirfiles, err := ioutil.ReadDir(absBase)
 	if err != nil {
 		die("Error: Unable to read the dir.")
 	}
 
-	var files []string
-	var dirs []string
-	for _, f := range dirfiles {
-		if f.IsDir() {
-			dirs = append(dirs, f.Name())
-		} else {
-			files = append(files, f.Name())
-		}
-	}
-	return files, dirs
+	return dirfiles
 }
 
 func createSubDir(absSubDirPath string) {
 	if !org.IsDir(absSubDirPath) {
-		// sub dir dont exit? create subdir it
 		err := org.CreateDir(absSubDirPath)
 		if err != nil {
 			fmt.Println("Error: Unable to create Sub Dir " + absSubDirPath + ".")
@@ -78,16 +68,20 @@ func createRequiredDir(wrDir *org.Organizer, subdir []string) {
 	}
 }
 
-// TODO:
 func main() {
-	organizer := org.Init(readArg())
-	files, dirs := readEntries(organizer.Source())
+	or := org.Init(readArg())
+	items := readEntries(or.Source())
+	createRequiredDir(&or, org.DirList())
+	for _, f := range items {
+		fileName := f.Name()
+		if f.IsDir() && fileName == or.BaseDirName() {
+			continue
+		}
 
-	createRequiredDir(&organizer, org.SubDirList())
-
-	// handle files
-	for _, fileName := range files {
-		err := organizer.MoveFile(fileName)
+		absSource := or.LocateInSource(fileName)
+		finalPath := or.FinalPath(fileName, org.SubDirName(absSource))
+		err := os.Rename(absSource, finalPath)
+		// log error
 		if err != nil {
 			fmt.Println("Error: Unable to move " + fileName + ".")
 		} else {
@@ -95,19 +89,5 @@ func main() {
 		}
 	}
 
-	// handle dir
-	for _, dir := range dirs {
-		if dir == organizer.BaseDirName() {
-			continue
-		}
-
-		err := organizer.MoveDir(dir)
-		if err != nil {
-			fmt.Println("Error: Unable to move " + dir + ".")
-		} else {
-			fmt.Println("Note: Move " + dir + ".")
-		}
-	}
-
-	removeEmptySubDir(&organizer, org.SubDirList())
+	removeEmptySubDir(&or, org.DirList())
 }
