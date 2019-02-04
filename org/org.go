@@ -1,7 +1,6 @@
 package org
 
 import (
-	"io"
 	"os"
 	"strings"
 
@@ -10,34 +9,34 @@ import (
 
 // Organizer has all the info about directory
 type Organizer struct {
-	base string
-	name string
-	sp   string
+	source   string
+	baseName string
+	sp       string
 }
 
-// AbsSource return exact path of working dir
-func (org *Organizer) AbsSource(fileName string) string {
-	return org.base + org.sp + fileName
+// LocateInSource return exact path of working dir
+func (org *Organizer) LocateInSource(fileName string) string {
+	return org.source + org.sp + fileName
 }
 
-// Base returns new base dir
-func (org *Organizer) Base() string {
-	return org.base
+// Source returns new base dir
+func (org *Organizer) Source() string {
+	return org.source
 }
 
-// NewBaseName !
-func (org *Organizer) NewBaseName() string {
-	return org.name
+// BaseDirName !
+func (org *Organizer) BaseDirName() string {
+	return org.baseName
 }
 
-// NewBase returns new base dir
-func (org *Organizer) NewBase() string {
-	return org.base + org.sp + org.name
+// AbsBase returns new base dir
+func (org *Organizer) AbsBase() string {
+	return org.source + org.sp + org.baseName
 }
 
 // AbsSubDir retrun abs path of guess new sub dir
 func (org *Organizer) AbsSubDir(subDirType string) string {
-	return org.NewBase() + org.sp + subDirType
+	return org.AbsBase() + org.sp + subDirType
 }
 
 // FinalPath of the file that will be created
@@ -46,45 +45,17 @@ func (org *Organizer) FinalPath(fileName, subDirType string) string {
 }
 
 // Init base Organizer
-func Init(basePath string) Organizer {
+func Init(inputDir string) Organizer {
 	return Organizer{
-		base: basePath,
-		name: "__organized",
-		sp:   string(os.PathSeparator),
+		source:   inputDir,
+		baseName: "__organized",
+		sp:       string(os.PathSeparator),
 	}
-}
-
-// IsEmptyDir directory
-func IsEmptyDir(absDir string) bool {
-	f, err := os.Open(absDir)
-	if err != nil {
-		return false
-	}
-
-	defer f.Close()
-
-	_, err = f.Readdirnames(1) // Or f.Readdir(1)
-	if err == io.EOF {
-		return true
-	}
-
-	return false
-}
-
-// IsDir !
-func IsDir(absPath string) bool {
-	fi, err := os.Stat(absPath)
-	return (err == nil && fi.IsDir())
-}
-
-// CreateDir !
-func CreateDir(absDir string) error {
-	return os.Mkdir(absDir, os.ModePerm)
 }
 
 // MoveDir to its sub dir
-func MoveDir(org *Organizer, dir string) error {
-	source := org.AbsSource(dir)
+func (org *Organizer) MoveDir(dir string) error {
+	source := org.LocateInSource(dir)
 	subDir := filetype.FileTypeDirectory
 	if IsEmptyDir(source) {
 		subDir = filetype.FileTypeEmptyDir
@@ -94,8 +65,8 @@ func MoveDir(org *Organizer, dir string) error {
 }
 
 // MoveFile in
-func MoveFile(org *Organizer, fileName string) error {
-	absSource := org.AbsSource(fileName)
+func (org *Organizer) MoveFile(fileName string) error {
+	absSource := org.LocateInSource(fileName)
 	fileType := filetype.Get(filetype.Ext(absSource))
 
 	finalPath := org.FinalPath(fileName, fileType)
@@ -111,7 +82,7 @@ func MoveFile(org *Organizer, fileName string) error {
 		absHTMLDataPath := org.FinalPath(htmlDataDir, fileType)
 		if IsDir(absHTMLDataPath) {
 			// move data file
-			err = os.Rename(org.AbsSource(htmlDataDir), absHTMLDataPath)
+			err = os.Rename(org.LocateInSource(htmlDataDir), absHTMLDataPath)
 			if err != nil {
 				return err
 			}

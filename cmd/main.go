@@ -66,8 +66,8 @@ func removeEmptySubDir(wrDir *org.Organizer, subdirs []string) {
 }
 
 func createRequiredDir(wrDir *org.Organizer, subdir []string) {
-	if !org.IsDir(wrDir.NewBase()) {
-		err := org.CreateDir(wrDir.NewBase())
+	if !org.IsDir(wrDir.AbsBase()) {
+		err := org.CreateDir(wrDir.AbsBase())
 		if err != nil {
 			die("Error: Unable to create required DIR.")
 		}
@@ -80,14 +80,14 @@ func createRequiredDir(wrDir *org.Organizer, subdir []string) {
 
 // TODO:
 func main() {
-	wrDir := org.Init(readArg())
-	files, dirs := readEntries(wrDir.Base())
+	organizer := org.Init(readArg())
+	files, dirs := readEntries(organizer.Source())
 
-	createRequiredDir(&wrDir, org.SubDirList())
+	createRequiredDir(&organizer, org.SubDirList())
 
 	// handle files
 	for _, fileName := range files {
-		err := org.MoveFile(&wrDir, fileName)
+		err := organizer.MoveFile(fileName)
 		if err != nil {
 			fmt.Println("Error: Unable to move " + fileName + ".")
 		} else {
@@ -97,11 +97,11 @@ func main() {
 
 	// handle dir
 	for _, dir := range dirs {
-		if dir == wrDir.NewBaseName() {
+		if dir == organizer.BaseDirName() {
 			continue
 		}
 
-		err := org.MoveDir(&wrDir, dir)
+		err := organizer.MoveDir(dir)
 		if err != nil {
 			fmt.Println("Error: Unable to move " + dir + ".")
 		} else {
@@ -109,5 +109,5 @@ func main() {
 		}
 	}
 
-	removeEmptySubDir(&wrDir, org.SubDirList())
+	removeEmptySubDir(&organizer, org.SubDirList())
 }
