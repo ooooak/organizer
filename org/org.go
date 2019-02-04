@@ -3,103 +3,54 @@ package org
 import (
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"./paths"
+	"./filetype"
 )
 
-// List of sub dir
-const (
-	FileTypeGraphics   string = "Graphics"
-	FileTypeDataFiles  string = "Datafiles"
-	FileTypeExecutable string = "Executable"
-	FileTypeImages     string = "Images"
-	FileTypeArchive    string = "Archive"
-	FileTypeDocs       string = "Docs"
-	FileTypeBooks      string = "Books"
-	FileTypeAudio      string = "Audio"
-	FileTypeVideos     string = "Videos"
-	FileTypeScripts    string = "Scripts"
-	FileTypeHTML       string = "Html"
-	FileTypeDirectory  string = "Folders"
-	FileTypeTorrent    string = "Torrent"
-	FileTypeText       string = "Text"
-	FileTypeShortCut   string = "ShortCut"
-	FileTypeEmptyDir   string = "Empty"
-	FileTypeUnknown    string = "Unknown"
-)
-
-// TODO: find away to define subdir
-// SubDirList !
-func SubDirList() []string {
-	return []string{
-		FileTypeGraphics, FileTypeDataFiles,
-		FileTypeExecutable, FileTypeImages,
-		FileTypeArchive, FileTypeDocs,
-		FileTypeBooks, FileTypeAudio,
-		FileTypeVideos, FileTypeScripts,
-		FileTypeHTML, FileTypeDirectory,
-		FileTypeTorrent, FileTypeText,
-		FileTypeShortCut, FileTypeEmptyDir,
-		FileTypeUnknown,
-	}
+// Organizer has all the info about directory
+type Organizer struct {
+	base string
+	name string
+	sp   string
 }
 
-// GetExt file extension
-func GetExt(absSource string) string {
-	return filepath.Ext(filepath.Base(absSource))
+// AbsSource return exact path of working dir
+func (org *Organizer) AbsSource(fileName string) string {
+	return org.base + org.sp + fileName
 }
 
-// GuessFileType get file type
-func GuessFileType(ext string) string {
-	switch strings.ToLower(ext) {
-	case ".psd", ".eps", ".ai", ".flinto", ".sketch":
-		return FileTypeGraphics
+// Base returns new base dir
+func (org *Organizer) Base() string {
+	return org.base
+}
 
-	case ".sql", ".xml", ".json":
-		return FileTypeDataFiles
+// NewBaseName !
+func (org *Organizer) NewBaseName() string {
+	return org.name
+}
 
-	case ".exe", ".msi":
-		return FileTypeExecutable
+// NewBase returns new base dir
+func (org *Organizer) NewBase() string {
+	return org.base + org.sp + org.name
+}
 
-	case ".png", ".jpg", ".svg", ".gif", ".jpeg":
-		return FileTypeImages
+// AbsSubDir retrun abs path of guess new sub dir
+func (org *Organizer) AbsSubDir(subDirType string) string {
+	return org.NewBase() + org.sp + subDirType
+}
 
-	case ".zip", ".rar", ".7z", ".gz":
-		return FileTypeArchive
+// FinalPath of the file that will be created
+func (org *Organizer) FinalPath(fileName, subDirType string) string {
+	return org.AbsSubDir(subDirType) + org.sp + fileName
+}
 
-	case ".text", ".txt":
-		return FileTypeText
-
-	case ".docx", ".doc", ".xlsx", ".md", ".pub", ".pt":
-		return FileTypeDocs
-
-	case ".epub", ".pdf", ".djvu", ".chm":
-		return FileTypeBooks
-
-	case ".mp3", ".m3u":
-		return FileTypeAudio
-
-	case ".mp4", ".flv", ".3gp", ".mpg", ".wmv", ".mov":
-		return FileTypeVideos
-
-	case ".php", ".c", ".js", ".cpp", ".fs", ".hs", ".ml",
-		".rs", ".go", ".d", ".java", ".h", ".py", ".rb", ".lua",
-		".r", ".rkt", ".clj", ".cljs", ".coffee", ".ts":
-		return FileTypeScripts
-
-	case ".torrent":
-		return FileTypeTorrent
-
-	case ".htm", ".html":
-		return FileTypeHTML
-
-	case ".lnk":
-		return FileTypeShortCut
-
-	default:
-		return FileTypeUnknown
+// Init base Organizer
+func Init(basePath string) Organizer {
+	return Organizer{
+		base: basePath,
+		name: "__organized",
+		sp:   string(os.PathSeparator),
 	}
 }
 
@@ -132,20 +83,20 @@ func CreateDir(absDir string) error {
 }
 
 // MoveDir to its sub dir
-func MoveDir(org *paths.Organizer, dir string) error {
+func MoveDir(org *Organizer, dir string) error {
 	source := org.AbsSource(dir)
-	subDir := FileTypeDirectory
+	subDir := filetype.FileTypeDirectory
 	if IsEmptyDir(source) {
-		subDir = FileTypeEmptyDir
+		subDir = filetype.FileTypeEmptyDir
 	}
 
 	return os.Rename(source, org.FinalPath(dir, subDir))
 }
 
 // MoveFile in
-func MoveFile(org *paths.Organizer, fileName string) error {
+func MoveFile(org *Organizer, fileName string) error {
 	absSource := org.AbsSource(fileName)
-	fileType := GuessFileType(GetExt(absSource))
+	fileType := filetype.Get(filetype.Ext(absSource))
 
 	finalPath := org.FinalPath(fileName, fileType)
 
@@ -154,7 +105,7 @@ func MoveFile(org *paths.Organizer, fileName string) error {
 		return err
 	}
 
-	if fileType == FileTypeHTML {
+	if fileType == filetype.FileTypeHTML {
 		// move data dir
 		htmlDataDir := strings.Split(fileName, ".")[0] + "_files"
 		absHTMLDataPath := org.FinalPath(htmlDataDir, fileType)
@@ -168,4 +119,27 @@ func MoveFile(org *paths.Organizer, fileName string) error {
 	}
 
 	return nil
+}
+
+// SubDirList !
+func SubDirList() []string {
+	return []string{
+		filetype.FileTypeGraphics,
+		filetype.FileTypeDataFiles,
+		filetype.FileTypeExecutable,
+		filetype.FileTypeImages,
+		filetype.FileTypeArchive,
+		filetype.FileTypeDocs,
+		filetype.FileTypeBooks,
+		filetype.FileTypeAudio,
+		filetype.FileTypeVideos,
+		filetype.FileTypeScripts,
+		filetype.FileTypeHTML,
+		filetype.FileTypeDirectory,
+		filetype.FileTypeTorrent,
+		filetype.FileTypeText,
+		filetype.FileTypeShortCut,
+		filetype.FileTypeEmptyDir,
+		filetype.FileTypeUnknown,
+	}
 }

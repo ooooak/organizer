@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"../org"
-	"../org/paths"
 )
 
 func die(text string) {
@@ -57,7 +56,7 @@ func createSubDir(absSubDirPath string) {
 	}
 }
 
-func removeEmptySubDir(wrDir *paths.Organizer, subdirs []string) {
+func removeEmptySubDir(wrDir *org.Organizer, subdirs []string) {
 	for _, dir := range subdirs {
 		absPath := (wrDir.AbsSubDir(dir))
 		if org.IsEmptyDir(absPath) {
@@ -66,7 +65,7 @@ func removeEmptySubDir(wrDir *paths.Organizer, subdirs []string) {
 	}
 }
 
-func createRequiredDir(wrDir *paths.Organizer, subdir []string) {
+func createRequiredDir(wrDir *org.Organizer, subdir []string) {
 	if !org.IsDir(wrDir.NewBase()) {
 		err := org.CreateDir(wrDir.NewBase())
 		if err != nil {
@@ -81,7 +80,7 @@ func createRequiredDir(wrDir *paths.Organizer, subdir []string) {
 
 // TODO:
 func main() {
-	wrDir := paths.Init(readArg())
+	wrDir := org.Init(readArg())
 	files, dirs := readEntries(wrDir.Base())
 
 	createRequiredDir(&wrDir, org.SubDirList())
