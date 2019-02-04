@@ -19,6 +19,11 @@ func (org *Organizer) Base() string {
 	return org.base
 }
 
+// NewBaseName !
+func (org *Organizer) NewBaseName() string {
+	return org.name
+}
+
 // NewBase returns new base dir
 func (org *Organizer) NewBase() string {
 	return org.base + org.sp + org.name

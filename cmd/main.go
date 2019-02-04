@@ -47,16 +47,6 @@ func readEntries(absBase string) ([]string, []string) {
 	return files, dirs
 }
 
-// create new base
-func createNewBaseDir(newBase string) {
-	if !org.IsDir(newBase) {
-		err := org.CreateDir(newBase)
-		if err != nil {
-			die("Error: Unable to create DIR. That was required.")
-		}
-	}
-}
-
 func createSubDir(absSubDirPath string) {
 	if !org.IsDir(absSubDirPath) {
 		// sub dir dont exit? create subdir it
@@ -67,15 +57,37 @@ func createSubDir(absSubDirPath string) {
 	}
 }
 
+func removeEmptySubDir(wrDir *paths.Organizer, subdirs []string) {
+	for _, dir := range subdirs {
+		absPath := (wrDir.AbsSubDir(dir))
+		if org.IsEmptyDir(absPath) {
+			os.Remove(absPath)
+		}
+	}
+}
+
+func createRequiredDir(wrDir *paths.Organizer, subdir []string) {
+	if !org.IsDir(wrDir.NewBase()) {
+		err := org.CreateDir(wrDir.NewBase())
+		if err != nil {
+			die("Error: Unable to create required DIR.")
+		}
+	}
+
+	for _, dir := range subdir {
+		createSubDir(wrDir.AbsSubDir(dir))
+	}
+}
+
+// TODO:
 func main() {
 	wrDir := paths.Init(readArg())
-	createNewBaseDir(wrDir.NewBase())
-
 	files, dirs := readEntries(wrDir.Base())
+
+	createRequiredDir(&wrDir, org.SubDirList())
 
 	// handle files
 	for _, fileName := range files {
-		createSubDir(wrDir.AbsSubDir(org.GuessFileType(org.GetExt(fileName))))
 		err := org.MoveFile(&wrDir, fileName)
 		if err != nil {
 			fmt.Println("Error: Unable to move " + fileName + ".")
@@ -84,16 +96,9 @@ func main() {
 		}
 	}
 
-	// handle dirs
-	if len(dirs) > 0 {
-		createSubDir(wrDir.AbsSubDir(org.FileTypeDirectory))
-		// TODO: Handle it better
-		createSubDir(wrDir.AbsSubDir(org.FileTypeEmptyDir))
-	}
-
+	// handle dir
 	for _, dir := range dirs {
-		// TODO: Define Constant
-		if dir == "__organized" {
+		if dir == wrDir.NewBaseName() {
 			continue
 		}
 
@@ -104,4 +109,6 @@ func main() {
 			fmt.Println("Note: Move " + dir + ".")
 		}
 	}
+
+	removeEmptySubDir(&wrDir, org.SubDirList())
 }

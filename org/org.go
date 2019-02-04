@@ -30,6 +30,22 @@ const (
 	FileTypeUnknown    string = "Unknown"
 )
 
+// TODO: find away to define subdir
+// SubDirList !
+func SubDirList() []string {
+	return []string{
+		FileTypeGraphics, FileTypeDataFiles,
+		FileTypeExecutable, FileTypeImages,
+		FileTypeArchive, FileTypeDocs,
+		FileTypeBooks, FileTypeAudio,
+		FileTypeVideos, FileTypeScripts,
+		FileTypeHTML, FileTypeDirectory,
+		FileTypeTorrent, FileTypeText,
+		FileTypeShortCut, FileTypeEmptyDir,
+		FileTypeUnknown,
+	}
+}
+
 // GetExt file extension
 func GetExt(absSource string) string {
 	return filepath.Ext(filepath.Base(absSource))
@@ -118,12 +134,11 @@ func CreateDir(absDir string) error {
 // MoveDir to its sub dir
 func MoveDir(org *paths.Organizer, dir string) error {
 	source := org.AbsSource(dir)
-	var subDir string
+	subDir := FileTypeDirectory
 	if IsEmptyDir(source) {
 		subDir = FileTypeEmptyDir
-	} else {
-		subDir = FileTypeDirectory
 	}
+
 	return os.Rename(source, org.FinalPath(dir, subDir))
 }
 
