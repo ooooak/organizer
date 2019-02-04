@@ -8,5 +8,5 @@ Organizer your junk folder
 
 # how to use
 
-organize ~/Desktop/junk 
+`organize ~/Desktop/junk `
 
